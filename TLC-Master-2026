@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLC-Master: Education 2.0 - Edizione 2026</title>
+    <style>
+        /* --- TEMA GENERALE E VARIABILI --- */
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --accent-green: #00ff88;
+            --accent-blue: #00e0ff;
+            --accent-red: #ff0055;
+            --text-color: #e0e0e0;
+            --border-glow: 0 0 15px rgba(0, 224, 255, 0.4);
+            --error-glow: 0 0 15px rgba(255, 0, 85, 0.6);
+            --font-main: 'Fira Code', 'Space Mono', 'Roboto Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* --- SISTEMA PRIVACY & CONSENSO (MODALE) --- */
+        #privacy-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden; /* Gestito via JS */
+            opacity: 0;
+        }
+
+        #privacy-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .privacy-modal {
+            background: var(--card-bg);
+            border: 2px solid var(--accent-blue);
+            box-shadow: var(--border-glow);
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            border-radius: 12px;
+        }
+
+        .privacy-modal h3 {
+            color: var(--accent-blue);
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+
+        .privacy-modal p {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .privacy-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-privacy {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .btn-accept { background: var(--accent-green); color: #000; }
+        .btn-accept:hover { box-shadow: 0 0 15px var(--accent-green); }
+        .btn-tech { background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue); }
+        .btn-tech:hover { background: rgba(0, 224, 255, 0.1); }
+
+        /* --- STRUTTURA LAYOUT --- */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--accent-blue);
+            padding-bottom: 10px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        .module {
+            background: var(--card-bg);
+            border: 1px solid #0f3460;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .module:hover { border-color: var(--accent-blue); box-shadow: var(--border-glow); }
+
+        /* --- COMPONENTI MODULO 1 --- */
+        .bit-container { display: flex; justify-content: space-around; flex-wrap: wrap; margin: 20px 0; }
+        .bit-unit { display: flex; flex-direction: column; align-items: center; margin: 5px; position: relative; }
+        .weight { font-size: 0.8rem; color: var(--accent-blue); margin-bottom: 5px; }
+        .info-icon { background: var(--accent-blue); color: var(--bg-color); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .tooltip-box { position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #fff; color: #333; padding: 10px; border-radius: 5px; font-size: 0.75rem; width: 180px; display: none; z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+
+        /* --- SWITCH STYLE --- */
+        .switch { position: relative; display: inline-block; width: 40px; height: 60px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; border-radius: 5px; border: 2px solid #555; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 30px; left: 3px; bottom: 5px; background-color: #777; border-radius: 3px; }
+        input:checked + .slider { background-color: var(--accent-green); border-color: #fff; box-shadow: 0 0 10px var(--accent-green); }
+        input:checked + .slider:before { transform: translateY(-30px); background-color: #fff; }
+
+        /* --- LOGICA & TABELLE --- */
+        .input-toggle { padding: 10px 20px; cursor: pointer; background: #333; border: none; color: white; font-size: 1.2rem; border-radius: 50%; width: 50px; height: 50px; }
+        .input-toggle.on { background: var(--accent-green); color: black; box-shadow: 0 0 15px var(--accent-green); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 12px; text-align: center; font-size: 0.9rem; }
+        tr.highlight { background: rgba(0, 224, 255, 0.15); color: var(--accent-blue); font-weight: bold; }
+
+        /* --- MODULO 3 & SEGNALE --- */
+        .physical-layer { height: 60px; width: 100%; background: #000; margin-top: 20px; border-radius: 5px; overflow: hidden; display: none; position: relative; border: 1px solid #333; }
+        .pulse-wave { width: 200%; height: 100%; background-image: linear-gradient(90deg, transparent 0%, transparent 45%, var(--accent-green) 45%, var(--accent-green) 55%, transparent 55%, transparent 100%); background-size: 40px 100%; position: absolute; animation: pulse-move 2s linear infinite; }
+        @keyframes pulse-move { from { transform: translateX(0); } to { transform: translateX(-40px); } }
+        #msg-input.error { border-color: var(--accent-red) !important; box-shadow: var(--error-glow) !important; }
+
+        /* --- FOOTER --- */
+        footer { margin-top: 40px; padding: 20px; font-size: 0.85rem; color: #666; text-align: center; border-top: 1px solid #333; width: 100%; max-width: 1000px; }
+        .footer-links { margin-top: 10px; }
+        .footer-links a { color: var(--accent-blue); text-decoration: none; cursor: pointer; margin: 0 10px; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        @media (min-width: 768px) { .container { grid-template-columns: 1fr 1fr; } .module-wide { grid-column: span 2; } }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY CONSENSO PRIVACY -->
+    <div id="privacy-overlay">
+        <div class="privacy-modal">
+            <h3>Protocollo Privacy 2026</h3>
+            <p>
+                Benvenuto nel laboratorio <strong>TLC-Master</strong>. <br><br>
+                Utilizziamo cookie tecnici locali per memorizzare le tue preferenze didattiche e garantire il funzionamento del tool. Nessun dato personale viene trasmesso all'esterno.
+            </p>
+            <div class="privacy-buttons">
+                <button class="btn-privacy btn-accept" onclick="setConsent('full')">Accetta Tutti</button>
+                <button class="btn-privacy btn-tech" onclick="setConsent('tech')">Solo Tecnici</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <h1>TLC-Master: Education 2.0</h1>
+        <p>Laboratorio Didattico Interattivo Biennio IT/TLC</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- MODULO 1: BIT -->
+        <section class="module">
+            <h2>
+                Modulo 1: Binario & Bit
+                <button onclick="copyBinary()" style="background:transparent; border:1px solid var(--accent-blue); color:var(--accent-blue); cursor:pointer; font-size:0.7rem; border-radius:4px; padding:2px 8px;">Copia</button>
+            </h2>
+            <div class="bit-container" id="bits-wrapper"></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(0,0,0,0.3); padding:15px; border-radius:8px;">
+                <div class="res-box" style="text-align:center;">
+                    <span style="font-size:0.7rem; color:#888;">DECIMALE</span>
+                    <div id="dec-val" style="font-size:1.3rem; color:var(--accent-green); font-weight:bold;">0</div>
+                </div>
+                <div class="res-box" style="text-align:center;">
+                    <span style="font-size:0.7rem; color:#888;">BINARIO</span>
+                    <div id="bin-val" style="font-size:1.3rem; color:var(--accent-green); font-weight:bold;">00000000</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODULO 2: LOGICA -->
+        <section class="module">
+            <h2>Modulo 2: Porte Logiche</h2>
+            <div style="display:flex; justify-content: space-around; align-items:center; margin:15px 0;">
+                <button class="input-toggle" id="in-a" onclick="toggleInput('a')">0</button>
+                <select id="gate-select" onchange="setGate(this.value)" style="background:#0a0a1a; color:var(--accent-blue); border:1px solid var(--accent-blue); padding:5px; font-family:inherit;">
+                    <option value="AND">AND</option>
+                    <option value="OR">OR</option>
+                    <option value="XOR">XOR</option>
+                    <option value="NOT">NOT</option>
+                </select>
+                <button class="input-toggle" id="in-b" onclick="toggleInput('b')">0</button>
+            </div>
+            <div id="logic-led" style="width:40px; height:40px; border-radius:50%; background:#222; margin:0 auto 10px; border:2px solid #444;"></div>
+            <table id="truth-table"></table>
+        </section>
+
+        <!-- MODULO 3: NETWORKING -->
+        <section class="module module-wide">
+            <h2>Modulo 3: Incapsulamento & L1</h2>
+            <div style="display:flex; gap:10px;">
+                <textarea id="msg-input" style="flex-grow:1; background:#0a0a1a; border:1px solid var(--accent-blue); color:var(--accent-green); padding:10px; border-radius:5px; font-family:inherit;" placeholder="Inserisci messaggio..."></textarea>
+                <button onclick="simulateEncapsulation()" style="background:var(--accent-green); border:none; padding:0 20px; font-weight:bold; cursor:pointer; border-radius:5px;">INVIO</button>
+            </div>
+            <div id="packet-stack" style="margin-top:20px;"></div>
+            <div id="physical-container" style="display:none; margin-top:20px;">
+                <span style="font-size:0.7rem; color:var(--accent-green);">LIVELLO 1: SEGNALE FISICO IN CORSO...</span>
+                <div class="physical-layer"><div class="pulse-wave"></div></div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        Copyright CyberAnas - Edition 2026
+        <div class="footer-links">
+            <a onclick="resetConsent()">Gestisci Consenso</a> | 
+            <a onclick="alert('Nessun dato viene inviato a server esterni. Elaborazione 100% locale.')">Informativa Estesa</a>
+        </div>
+    </footer>
+
+    <script>
+        /* --- GESTIONE CONSENSO (PRIVACY LOGIC) --- */
+        function checkConsent() {
+            const consent = localStorage.getItem('tlc_master_consent');
+            if (!consent) {
+                document.getElementById('privacy-overlay').classList.add('show');
+            }
+        }
+
+        function setConsent(type) {
+            localStorage.setItem('tlc_master_consent', type);
+            document.getElementById('privacy-overlay').classList.remove('show');
+        }
+
+        function resetConsent() {
+            localStorage.removeItem('tlc_master_consent');
+            location.reload();
+        }
+
+        /* --- MODULO 1: BIT LOGIC --- */
+        const weights = [128, 64, 32, 16, 8, 4, 2, 1];
+        const wrapper = document.getElementById('bits-wrapper');
+
+        weights.forEach((w, i) => {
+            const unit = document.createElement('div');
+            unit.className = 'bit-unit';
+            unit.innerHTML = `
+                <span class="weight">${w} <span class="info-icon" onmouseover="this.nextElementSibling.style.display='block'" onmouseout="this.nextElementSibling.style.display='none'">i</span>
+                    <div class="tooltip-box">Bit peso ${w} (2^${7-i})</div>
+                </span>
+                <label class="switch">
+                    <input type="checkbox" class="bit-input" data-weight="${w}" onchange="updateBits()">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size:0.6rem; color:#555;">${i==0?'MSB':(i==7?'LSB':'')}</span>
+            `;
+            wrapper.appendChild(unit);
+        });
+
+        function updateBits() {
+            let total = 0, bin = "";
+            document.querySelectorAll('.bit-input').forEach(input => {
+                if(input.checked) { total += parseInt(input.getAttribute('data-weight')); bin += "1"; }
+                else bin += "0";
+            });
+            document.getElementById('dec-val').innerText = total;
+            document.getElementById('bin-val').innerText = bin;
+        }
+
+        function copyBinary() {
+            navigator.clipboard.writeText(document.getElementById('bin-val').innerText);
+            alert("Copiato!");
+        }
+
+        /* --- MODULO 2: LOGIC GATES --- */
+        let gate = 'AND', inA = 0, inB = 0;
+        function toggleInput(id) {
+            if(id === 'a') inA = inA?0:1; else inB = inB?0:1;
+            document.getElementById(`in-${id}`).innerText = id==='a'?inA:inB;
+            document.getElementById(`in-${id}`).classList.toggle('on', (id==='a'?inA:inB));
+            runLogic();
+        }
+        function setGate(val) { gate = val; document.getElementById('in-b').style.visibility = val==='NOT'?'hidden':'visible'; runLogic(); }
+        function runLogic() {
+            let res = 0;
+            if(gate==='AND') res = inA && inB;
+            if(gate==='OR') res = inA || inB;
+            if(gate==='XOR') res = inA ^ inB;
+            if(gate==='NOT') res = !inA?1:0;
+            const led = document.getElementById('logic-led');
+            led.style.background = res? 'var(--accent-red)':'#222';
+            led.style.boxShadow = res? '0 0 15px var(--accent-red)':'none';
+            updateTable();
+        }
+        function updateTable() {
+            const table = document.getElementById('truth-table');
+            let rows = gate==='NOT' ? [0,1] : [[0,0],[0,1],[1,0],[1,1]];
+            let html = `<tr><th>A</th>${gate!=='NOT'?'<th>B</th>':''}<th>Y</th></tr>`;
+            rows.forEach(r => {
+                let a = Array.isArray(r)?r[0]:r, b = Array.isArray(r)?r[1]:0, y=0;
+                if(gate==='AND') y=a&&b; if(gate==='OR') y=a||b; if(gate==='XOR') y=a^b; if(gate==='NOT') y=!a?1:0;
+                const highlight = gate==='NOT' ? (a===inA) : (a===inA && b===inB);
+                html += `<tr class="${highlight?'highlight':''}"><td>${a}</td>${gate!=='NOT'?'<td>'+b+'</td>':''}<td>${y}</td></tr>`;
+            });
+            table.innerHTML = html;
+        }
+
+        /* --- MODULO 3: NETWORKING --- */
+        function simulateEncapsulation() {
+            const msg = document.getElementById('msg-input').value;
+            if(!msg) { document.getElementById('msg-input').classList.add('error'); setTimeout(()=>document.getElementById('msg-input').classList.remove('error'), 500); return; }
+            
+            const stack = document.getElementById('packet-stack');
+            stack.innerHTML = "";
+            document.getElementById('physical-container').style.display = 'none';
+
+            const layers = [
+                {n: 'DATA', d: msg, c: '#fff'},
+                {n: 'TCP SEGMENT', d: 'Port: 8080', c: 'var(--accent-green)'},
+                {n: 'IP PACKET', d: '192.168.1.10', c: '#ffaa00'},
+                {n: 'ETH FRAME', d: 'MAC: 00:0A:95', c: 'var(--accent-red)'}
+            ];
+
+            layers.forEach((l, i) => {
+                setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.style = `border:1px solid ${l.c}; padding:8px; margin-bottom:5px; border-radius:4px; font-size:0.8rem; text-align:center; animation:pulse-move 0.3s forwards;`;
+                    div.innerHTML = `<strong>${l.n}</strong> - ${l.d}`;
+                    stack.prepend(div);
+                    if(i === 3) document.getElementById('physical-container').style.display = 'block';
+                }, i * 400);
+            });
+        }
+
+        // INIT
+        window.onload = () => {
+            checkConsent();
+            updateBits();
+            runLogic();
+        };
+    </script>
+</body>
+</html>
